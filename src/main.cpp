@@ -53,10 +53,41 @@ int main(int argc, char* argv[]) {
      
     int client_fd = accept(server_fd, reinterpret_cast<struct sockaddr*>(&client_addr), &client_addr_len);
     std::cout << "Client connected\n";
-
+    const int MAX_BUFFER_SIZE = 4096;
+    char buffer[MAX_BUFFER_SIZE];
+    int rv = recv(client_fd, buffer, MAX_BUFFER_SIZE, 0);
     int32_t message_size = htonl(0);
-    int32_t correlation_id = htonl(7);
+    int32_t correlation_id;
+    //_______________________________________________________
+    //                  Alternative method
+    //_______________________________________________________
+    // struct KafkaRequestHeader {
+    //     int32_t message_size;
+    //     int16_t request_api_key;
+    //     int16_t request_api_version;
+    //     int32_t correlation_id;
+    // };
+    // KafkaRequestHeader header;
+    // int rv = recv(client_fd, &header, sizeof(header), 0);
+    //_______________________________________________________
+
+    /*
+    Field	            Data type	        Description
+    message_size        INT32               size of this request
+    request_api_key	    INT16	            The API key for the request
+    request_api_version	INT16	            The version of the API for the request
+    correlation_id	    INT32	            A unique identifier for the request
+    client_id	        NULLABLE_STRING	    The client ID for the request
+    TAG_BUFFER	        COMPACT_ARRAY	    Optional tagged fields
+    */
+
+    //Skips first 8 bytes
+    std::memcpy(&correlation_id, buffer + 8, sizeof(correlation_id));
+    correlation_id = ntohl(correlation_id);
+
     send(client_fd, &message_size, sizeof(message_size), 0);
+    
+    correlation_id = htonl(correlation_id);
     send(client_fd, &correlation_id, sizeof(correlation_id), 0);
 
     close(client_fd);
