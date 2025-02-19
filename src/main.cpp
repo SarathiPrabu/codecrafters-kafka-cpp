@@ -56,8 +56,7 @@ int main(int argc, char* argv[]) {
     const int MAX_BUFFER_SIZE = 4096;
     char buffer[MAX_BUFFER_SIZE];
     int rv = recv(client_fd, buffer, MAX_BUFFER_SIZE, 0);
-    int32_t message_size = htonl(0);
-    int32_t correlation_id;
+    
     //_______________________________________________________
     //                  Alternative method
     //_______________________________________________________
@@ -81,14 +80,29 @@ int main(int argc, char* argv[]) {
     TAG_BUFFER	        COMPACT_ARRAY	    Optional tagged fields
     */
 
-    //Skips first 8 bytes
-    std::memcpy(&correlation_id, buffer + 8, sizeof(correlation_id));
-    correlation_id = ntohl(correlation_id);
+    uint32_t message_size{};
+    int16_t request_api_key{};
+    int16_t request_api_version{};
+    int32_t correlation_id{};
 
+    message_size = ntohl(*reinterpret_cast<const uint32_t *>(buffer));
+    request_api_key = ntohs(*reinterpret_cast<const int16_t *>(buffer + 4));
+    request_api_version = ntohs(*reinterpret_cast<const int16_t *>(buffer + 6));
+    correlation_id = ntohl(*reinterpret_cast<const int32_t *>(buffer + 8));
+    
+    message_size = htonl(0);
     send(client_fd, &message_size, sizeof(message_size), 0);
     
+
     correlation_id = htonl(correlation_id);
     send(client_fd, &correlation_id, sizeof(correlation_id), 0);
+
+    if(request_api_version < 0 || request_api_version > 4){
+        int16_t error_code = 35;
+        error_code = htons(error_code);
+        send(client_fd, &error_code, sizeof(error_code), 0);
+    }
+    
 
     close(client_fd);
 
