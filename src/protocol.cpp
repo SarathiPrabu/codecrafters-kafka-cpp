@@ -15,6 +15,20 @@ RequestMessage RequestMessage::parse(const std::vector<uint8_t>& buffer) {
     return req;
 }
 
+template <typename T>
+void write_to_buffer(std::vector<uint8_t>& buffer, T value) {
+    T net_value = value;  // Default for non-network types
+
+    // Convert to network byte order for multi-byte values
+    if constexpr (sizeof(T) == 2) {
+        net_value = htons(value);
+    } else if constexpr (sizeof(T) == 4) {
+        net_value = htonl(value);
+    }
+
+    const uint8_t* byte_data = reinterpret_cast<const uint8_t*>(&net_value);
+    buffer.insert(buffer.end(), byte_data, byte_data + sizeof(T));
+}
 
 void encodeUnsignedVarint(uint32_t value, std::vector<uint8_t>& buffer) {
     while (value >= 0x80) {  // While value is greater than 7 bits
@@ -28,44 +42,32 @@ std::vector<uint8_t> ResponseMessage::serialize() const {
     std::vector<uint8_t> buffer;
 
     //Reserve space for message size (4 bytes) - Will be updated later
-    buffer.insert(buffer.end(), reinterpret_cast<const uint8_t*>(&message_size),
-                  reinterpret_cast<const uint8_t*>(&message_size) + sizeof(message_size));
+    buffer.resize(sizeof(message_size));  // Placeholder for message size
 
     //Step 1: Correlation ID (4 bytes)
-    uint32_t correlation_id_net = htonl(correlation_id);
-    buffer.insert(buffer.end(), reinterpret_cast<const uint8_t*>(&correlation_id_net),
-                  reinterpret_cast<const uint8_t*>(&correlation_id_net) + sizeof(correlation_id_net));
+    write_to_buffer(buffer, correlation_id);
 
     //Step 2: Error Code (2 bytes)
-    int16_t error_code_net = htons(error_code);
-    buffer.insert(buffer.end(), reinterpret_cast<const uint8_t*>(&error_code_net),
-                  reinterpret_cast<const uint8_t*>(&error_code_net) + sizeof(error_code_net));
+    write_to_buffer(buffer, error_code);
 
     //Step 3: Encode `num_api_keys` as an **Unsigned Varint**
-    encodeUnsignedVarint(api_keys+1, buffer);  // Only one API key (ApiVersions)
+    encodeUnsignedVarint(api_keys.size(), buffer);
 
     //Step 4: API Key List (Loop for `num_api_keys` entries)
-    int16_t api_key_net = htons(api_key);  // API_VERSIONS = 18
-    int16_t min_version_net = htons(min_version);
-    int16_t max_version_net = htons(max_version);  // Must be at least 4
-
-    buffer.insert(buffer.end(), reinterpret_cast<const uint8_t*>(&api_key_net),
-                  reinterpret_cast<const uint8_t*>(&api_key_net) + sizeof(api_key_net));
-    buffer.insert(buffer.end(), reinterpret_cast<const uint8_t*>(&min_version_net),
-                  reinterpret_cast<const uint8_t*>(&min_version_net) + sizeof(min_version_net));
-    buffer.insert(buffer.end(), reinterpret_cast<const uint8_t*>(&max_version_net),
-                  reinterpret_cast<const uint8_t*>(&max_version_net) + sizeof(max_version_net));
+    for (const auto& api_entry : api_keys) {
+        write_to_buffer(buffer, api_entry.api_key);
+        write_to_buffer(buffer, api_entry.min_version);
+        write_to_buffer(buffer, api_entry.max_version);
 
     //Step 5: Tagged Fields for API Key Entry (Unsigned Varint = 0)
-    encodeUnsignedVarint(0, buffer);  // No additional fields
+        encodeUnsignedVarint(0, buffer);
+    }
 
     //Step 6: Throttle Time (4 bytes) - Should be 0 if no throttling
-    int32_t throttle_time_ms_net = htonl(throttle_time_ms);
-    buffer.insert(buffer.end(), reinterpret_cast<const uint8_t*>(&throttle_time_ms_net),
-                  reinterpret_cast<const uint8_t*>(&throttle_time_ms_net) + sizeof(throttle_time_ms_net));
+    write_to_buffer(buffer, throttle_time_ms);
 
     //Step 7: Tagged Fields for Response Body (Unsigned Varint = 0)
-    encodeUnsignedVarint(0, buffer);  // No additional fields
+    encodeUnsignedVarint(0, buffer);
 
     //Compute and update message size
     uint32_t final_message_size = htonl(buffer.size() - sizeof(message_size));
