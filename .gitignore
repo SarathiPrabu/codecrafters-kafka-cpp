@@ -52,4 +52,5 @@ Mkfile.old
 dkms.conf
 
 build
+build_xcode
 vcpkg_installed

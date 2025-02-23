@@ -1,16 +1,19 @@
-#pragma once
+#ifndef SERVER_HPP
+#define SERVER_HPP
 
 #include <netinet/in.h>
+#include <thread>
 
 class Server {
+private:
+    int server_fd;
+    struct sockaddr_in server_addr;
+    int backlog;
+
 public:
     explicit Server(int port);
     ~Server();
-    
-    int start();
-    int acceptClient(struct sockaddr_in &client_addr);
-
-private:
-    int server_fd;
-    int port;
+    void start();  // Accepts connections & spawns threads
 };
+
+#endif // SERVER_HPP

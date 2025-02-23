@@ -42,7 +42,7 @@ std::vector<uint8_t> ResponseMessage::serialize() const {
                   reinterpret_cast<const uint8_t*>(&error_code_net) + sizeof(error_code_net));
 
     //Step 3: Encode `num_api_keys` as an **Unsigned Varint**
-    encodeUnsignedVarint(api_keys, buffer);  // Only one API key (ApiVersions)
+    encodeUnsignedVarint(api_keys+1, buffer);  // Only one API key (ApiVersions)
 
     //Step 4: API Key List (Loop for `num_api_keys` entries)
     int16_t api_key_net = htons(api_key);  // API_VERSIONS = 18
