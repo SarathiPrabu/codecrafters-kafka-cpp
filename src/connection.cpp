@@ -22,8 +22,8 @@ void Connection::handleClient(int client_fd) {
         ResponseMessage response{};
         response.correlation_id = request.correlation_id;
         response.error_code = (request.api_version < 0 || request.api_version > 4) ? 35 : 0;
-        response.api_keys.push_back(APIKeys(18, 0, 4));  // API_VERSIONS
-        response.api_keys.push_back(APIKeys(75, 0, 0));  // New API Key 75
+        response.api_keys.push_back(APIKeys(18, 0, 4)); // APIVersions - 18
+        response.api_keys.push_back(APIKeys(75, 0, 0)); // DescribeTopicPartitions - 75
         response.throttle_time_ms = 0;
 
         //Send response
