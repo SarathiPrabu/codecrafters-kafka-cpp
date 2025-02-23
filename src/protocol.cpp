@@ -51,7 +51,7 @@ std::vector<uint8_t> ResponseMessage::serialize() const {
     write_to_buffer(buffer, error_code);
 
     //Step 3: Encode `num_api_keys` as an **Unsigned Varint**
-    encodeUnsignedVarint(api_keys.size(), buffer);
+    encodeUnsignedVarint(api_keys.size()+1, buffer);
 
     //Step 4: API Key List (Loop for `num_api_keys` entries)
     for (const auto& api_entry : api_keys) {
